@@ -92,5 +92,7 @@ test("includes open-source project hygiene files", async () => {
   assert.match(readme, /^# SkillMaker/m);
   assert.match(readme, /open-source workspace/);
   assert.match(readme, /SKILL\.md` and `DESIGN\.md/);
+  assert.match(readme, /https:\/\/skillmdmaker\.vercel\.app/);
+  assert.doesNotMatch(readme, /Add your|Add screenshots|your-skillmaker-site/);
   assert.doesNotMatch(readme, /vinext-starter/);
 });

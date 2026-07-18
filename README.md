@@ -23,15 +23,11 @@ Good agent skills and design briefs are more than prompts. They need clear trigg
 
 ## Demo
 
-Add your deployed Vercel URL here:
-
-```text
-https://skillmdmaker.vercel.app
-```
+Try the live app: [skillmdmaker.vercel.app](https://skillmdmaker.vercel.app)
 
 ## Screenshots
 
-Add screenshots to `public/` or a `docs/` folder and link them here.
+![SkillMaker workspace preview](./public/og.png)
 
 ## Getting Started
 

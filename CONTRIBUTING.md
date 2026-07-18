@@ -4,8 +4,8 @@ Thanks for helping improve SkillMaker.
 
 ## Ways To Contribute
 
-- Improve the `SKILL.md` generation format.
-- Add skill templates for common workflows.
+- Improve the `SKILL.md` or `DESIGN.md` generation formats.
+- Add skill or design templates for common workflows.
 - Add validation rules and quality checks.
 - Improve import/export flows.
 - Improve accessibility, responsive layout, and keyboard support.
@@ -43,7 +43,7 @@ npm test
 
 Good starter contributions include:
 
-- Add another built-in skill template.
+- Add another built-in skill or design template.
 - Add a markdown import parser improvement.
 - Add a validation rule with a clear message.
 - Improve empty states.
