@@ -133,6 +133,36 @@ label span {
   font-weight: 800;
 }
 
+.mode-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffefa;
+  padding: 4px;
+}
+
+.mode-toggle button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  padding: 0 8px;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.mode-toggle button:hover {
+  background: rgba(0, 124, 120, 0.08);
+  transform: none;
+}
+
+.mode-toggle button.active {
+  background: var(--teal);
+  color: white;
+}
+
 .eyebrow {
   margin: 0 0 4px;
   color: var(--teal-dark);

@@ -1,22 +1,23 @@
 # SkillMaker
 
-SkillMaker is an open-source workspace for designing, validating, and exporting reusable AI skills as `SKILL.md` files.
+SkillMaker is an open-source workspace for designing, validating, and exporting reusable AI skills and product design briefs as `SKILL.md` and `DESIGN.md` files.
 
-It helps people turn rough instructions, examples, reference notes, and workflow rules into a clean skill document that an AI coding agent can follow.
+It helps people turn rough instructions, examples, reference notes, workflow rules, and design direction into clean markdown documents that an AI coding agent or product team can follow.
 
 ## Why It Exists
 
-Good agent skills are more than prompts. They need clear trigger conditions, required inputs, ordered workflow steps, reference material, expected outputs, and guardrails. SkillMaker gives those pieces a focused authoring surface instead of asking people to start from a blank markdown file.
+Good agent skills and design briefs are more than prompts. They need clear trigger conditions, required inputs, ordered workflow steps, reference material, expected outputs, and guardrails. SkillMaker gives those pieces a focused authoring surface instead of asking people to start from a blank markdown file.
 
 ## Features
 
-- Create and manage multiple skill drafts.
+- Toggle between `SKILL.md` and `DESIGN.md` authoring modes.
+- Create and manage multiple skill or design drafts.
 - Convert a plain-language idea into a structured draft.
 - Capture purpose, audience, triggers, inputs, workflow, reference material, output, and guardrails.
-- Preview the generated `SKILL.md` in real time.
+- Preview the generated `SKILL.md` or `DESIGN.md` in real time.
 - Score draft readiness with practical quality checks.
-- Copy or download a single skill.
-- Export all skills into one markdown bundle.
+- Copy or download a single file.
+- Export all files in the active mode into one markdown bundle.
 - Store drafts locally in the browser.
 - Deploy as a standard Next.js app on Vercel.
 
@@ -25,7 +26,7 @@ Good agent skills are more than prompts. They need clear trigger conditions, req
 Add your deployed Vercel URL here:
 
 ```text
-https://your-skillmaker-site.vercel.app
+https://skillmdmaker.vercel.app
 ```
 
 ## Screenshots
@@ -85,7 +86,7 @@ Important Vercel settings:
 
 ```text
 app/
-  page.tsx        SkillMaker workspace
+  page.tsx        SkillMaker and DesignMaker workspace
   globals.css    Product styling
   layout.tsx     Metadata and root layout
 public/

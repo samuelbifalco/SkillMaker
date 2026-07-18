@@ -34,7 +34,8 @@ test("server-renders the SkillMaker workspace shell", async () => {
   assert.match(html, /<title>SkillMaker<\/title>/i);
   assert.match(html, /open-source workspace/i);
   assert.match(html, /Design, validate, and export/);
-  assert.match(html, /SKILL\.md preview/);
+  assert.match(html, /DESIGN\.md/);
+  assert.match(html, /SKILL\.md(?:<!-- -->)? preview/);
   assert.match(html, /Assist Draft/);
   assert.match(html, /Copy Install Prompt/);
   assert.match(html, /Templates/);
@@ -55,13 +56,18 @@ test("uses finished site metadata and removes starter preview files", async () =
   ]);
 
   assert.match(page, /generateSkillMarkdown/);
+  assert.match(page, /generateDesignMarkdown/);
   assert.match(page, /downloadMarkdown/);
-  assert.match(page, /parseSkillMarkdown/);
+  assert.match(page, /parseMarkdown/);
   assert.match(page, /validationChecks/);
+  assert.match(page, /modeConfigs/);
+  assert.match(page, /designTemplates/);
+  assert.match(page, /skillmaker-design-drafts/);
   assert.match(page, /addedTemplateSlugs/);
-  assert.match(page, /deleteSkillById/);
+  assert.match(page, /deleteDraftById/);
   assert.match(page, /removeDuplicateDrafts/);
   assert.match(layout, /title:\s*"SkillMaker"/);
+  assert.match(layout, /SKILL\.md and DESIGN\.md/);
   assert.match(layout, /images:\s*\["\/og\.png"\]/);
   assert.doesNotMatch(layout, /Starter Project|codex-preview|_sites-preview/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
@@ -85,5 +91,6 @@ test("includes open-source project hygiene files", async () => {
   const readme = await readFile(new URL("../README.md", import.meta.url), "utf8");
   assert.match(readme, /^# SkillMaker/m);
   assert.match(readme, /open-source workspace/);
+  assert.match(readme, /SKILL\.md` and `DESIGN\.md/);
   assert.doesNotMatch(readme, /vinext-starter/);
 });

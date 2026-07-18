@@ -2,7 +2,9 @@
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 
-type SkillDraft = {
+type Mode = "skill" | "design";
+
+type Draft = {
   id: string;
   title: string;
   summary: string;
@@ -22,7 +24,79 @@ type ValidationCheck = {
   detail: string;
 };
 
-const templates: SkillDraft[] = [
+type ModeConfig = {
+  mode: Mode;
+  fileName: "SKILL.md" | "DESIGN.md";
+  noun: "Skill" | "Design";
+  plural: "skills" | "designs";
+  storageKey: string;
+  title: string;
+  eyebrow: string;
+  headline: string;
+  ideaLabel: string;
+  ideaPlaceholder: string;
+  titleLabel: string;
+  summaryLabel: string;
+  purposeLabel: string;
+  audienceLabel: string;
+  triggersLabel: string;
+  inputsLabel: string;
+  workflowLabel: string;
+  materialsLabel: string;
+  outputLabel: string;
+  guardrailsLabel: string;
+};
+
+const modeConfigs: Record<Mode, ModeConfig> = {
+  skill: {
+    mode: "skill",
+    fileName: "SKILL.md",
+    noun: "Skill",
+    plural: "skills",
+    storageKey: "skillmaker-skill-drafts",
+    title: "SkillMaker",
+    eyebrow: "Design, validate, and export SKILL.md",
+    headline: "Turn repeatable AI workflows into clean skill files.",
+    ideaLabel: "Explain the skill you want",
+    ideaPlaceholder:
+      "Example: A skill that reviews launch plans, checks risks, and writes an executive-ready readiness memo.",
+    titleLabel: "Skill title",
+    summaryLabel: "One-line description",
+    purposeLabel: "Purpose",
+    audienceLabel: "Audience or operating context",
+    triggersLabel: "When to use",
+    inputsLabel: "Required inputs",
+    workflowLabel: "Step-by-step workflow",
+    materialsLabel: "Information, examples, or code",
+    outputLabel: "Expected output",
+    guardrailsLabel: "Guardrails",
+  },
+  design: {
+    mode: "design",
+    fileName: "DESIGN.md",
+    noun: "Design",
+    plural: "designs",
+    storageKey: "skillmaker-design-drafts",
+    title: "DesignMaker",
+    eyebrow: "Design, validate, and export DESIGN.md",
+    headline: "Turn product ideas into clear design briefs and system notes.",
+    ideaLabel: "Explain the design you want",
+    ideaPlaceholder:
+      "Example: A calm dashboard for founders to review usage, conversion, and onboarding risk before a weekly meeting.",
+    titleLabel: "Design title",
+    summaryLabel: "One-line design brief",
+    purposeLabel: "Product goal",
+    audienceLabel: "Target users or context",
+    triggersLabel: "When this design applies",
+    inputsLabel: "Required content and constraints",
+    workflowLabel: "Design process",
+    materialsLabel: "Visual system, references, or code",
+    outputLabel: "Expected design deliverable",
+    guardrailsLabel: "Design constraints",
+  },
+};
+
+const skillTemplates: Draft[] = [
   {
     id: "template-code-review",
     title: "Code Review",
@@ -85,14 +159,88 @@ const templates: SkillDraft[] = [
   },
 ];
 
-const starterSkills: SkillDraft[] = templates.slice(0, 2).map((skill) => ({
-  ...skill,
-  id: skill.id.replace("template", "skill"),
-}));
+const designTemplates: Draft[] = [
+  {
+    id: "template-saas-dashboard",
+    title: "SaaS Dashboard",
+    summary: "Design a dense operating dashboard for weekly product and revenue review.",
+    purpose:
+      "Define a practical dashboard experience that helps teams scan health, diagnose changes, and decide what to do next.",
+    audience: "Founders, product leads, revenue teams, and operators.",
+    triggers:
+      "User needs a dashboard or internal tool design\nUser has metrics and wants a decision surface\nUser needs a product spec before implementation",
+    inputs:
+      "Primary user and job to be done\nMetrics, dimensions, and time range\nDecision cadence\nRequired filters and actions\nBrand or visual constraints",
+    workflow:
+      "Clarify the user's primary decision and audience\nDefine the information hierarchy and default view\nSpecify key components, filters, and empty states\nDescribe responsive behavior and interaction states\nCall out implementation notes and open questions",
+    materials:
+      "Prefer dense, scannable layouts for operational tools.\nAvoid marketing-style hero sections for dashboards.\nUse restrained color and clear table/chart hierarchy.",
+    output:
+      "A complete DESIGN.md brief with layout, components, states, visual system, and implementation notes.",
+    guardrails:
+      "Do not invent unavailable metrics.\nKeep visual choices tied to the user workflow.\nMake mobile constraints explicit.",
+  },
+  {
+    id: "template-landing-page",
+    title: "Product Landing Page",
+    summary: "Design a public landing page with clear positioning and conversion flow.",
+    purpose:
+      "Create a design brief that explains the page structure, visual direction, and calls to action for a public product page.",
+    audience: "Potential users evaluating a product, tool, venue, or service.",
+    triggers:
+      "User asks for a website or landing page\nUser needs a public product introduction\nUser wants a launch page design before build",
+    inputs:
+      "Product name\nTarget audience\nPrimary offer or category\nProof points\nCalls to action\nBrand constraints",
+    workflow:
+      "Identify the first-viewport promise and conversion goal\nDefine page sections in reading order\nSpecify imagery and visual tone\nDescribe calls to action and trust signals\nNote responsive layout and content priorities",
+    materials:
+      "Hero headline should be the product, brand, or literal offer.\nSupporting copy carries the value proposition.\nUse real or generated imagery when the subject needs visual inspection.",
+    output:
+      "A DESIGN.md brief that can guide implementation or design review.",
+    guardrails:
+      "Do not bury the product name.\nAvoid generic stock-like visuals.\nKeep claims specific and supportable.",
+  },
+  {
+    id: "template-mobile-flow",
+    title: "Mobile App Flow",
+    summary: "Design a focused mobile workflow with screens, states, and edge cases.",
+    purpose:
+      "Help an agent or designer specify a mobile experience that is easy to scan, tap, and recover from errors.",
+    audience: "Product designers and engineers building mobile-first workflows.",
+    triggers:
+      "User needs mobile screens\nUser describes a multi-step flow\nUser wants interaction states before build",
+    inputs:
+      "User goal\nScreen list\nRequired data or actions\nError and empty states\nPlatform constraints",
+    workflow:
+      "Map the happy path and fallback paths\nDefine screen-by-screen content and controls\nSpecify navigation and state transitions\nDescribe loading, empty, error, and success states\nList implementation and accessibility notes",
+    materials:
+      "Prefer platform-native controls where possible.\nKeep tap targets large and copy short.\nAvoid relying on hover or dense desktop-only controls.",
+    output:
+      "A DESIGN.md brief with screen inventory, interactions, states, and build notes.",
+    guardrails:
+      "Do not add extra screens without user value.\nMake destructive actions reversible or confirmable.\nKeep text readable on small screens.",
+  },
+];
 
-const blankSkill = (): SkillDraft => ({
-  id: `skill-${Date.now()}`,
-  title: "New Skill",
+const templatesByMode: Record<Mode, Draft[]> = {
+  skill: skillTemplates,
+  design: designTemplates,
+};
+
+const starterDrafts: Record<Mode, Draft[]> = {
+  skill: skillTemplates.slice(0, 2).map((draft) => ({
+    ...draft,
+    id: draft.id.replace("template", "skill"),
+  })),
+  design: designTemplates.slice(0, 2).map((draft) => ({
+    ...draft,
+    id: draft.id.replace("template", "design"),
+  })),
+};
+
+const blankDraft = (mode: Mode): Draft => ({
+  id: `${mode}-${Date.now()}`,
+  title: mode === "skill" ? "New Skill" : "New Design",
   summary: "",
   purpose: "",
   audience: "",
@@ -104,21 +252,21 @@ const blankSkill = (): SkillDraft => ({
   guardrails: "",
 });
 
-function cloneSkill(skill: SkillDraft, title = skill.title): SkillDraft {
+function cloneDraft(draft: Draft, title = draft.title): Draft {
   return {
-    ...skill,
-    id: `skill-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    ...draft,
+    id: `draft-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     title,
   };
 }
 
-function slugify(value: string) {
+function slugify(value: string, fallback = "custom-document") {
   return (
     value
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "") || "custom-skill"
+      .replace(/(^-|-$)/g, "") || fallback
   );
 }
 
@@ -141,61 +289,98 @@ function sectionList(value: string, fallback: string) {
   return lines.map((line) => `- ${cleanListLine(line)}`).join("\n");
 }
 
-function numberedList(value: string) {
+function numberedList(value: string, fallback: string[]) {
   const lines = listLines(value);
-  if (!lines.length) {
-    return "1. Clarify the user's goal and available inputs.\n2. Gather the relevant context.\n3. Execute the workflow carefully.\n4. Return the requested artifact with caveats.";
+  const source = lines.length ? lines.map(cleanListLine) : fallback;
+  return source.map((line, index) => `${index + 1}. ${line}`).join("\n");
+}
+
+function referenceSection(draft: Draft, heading: string) {
+  if (!draft.materials.trim()) {
+    return "";
   }
-  return lines.map((line, index) => `${index + 1}. ${cleanListLine(line)}`).join("\n");
+
+  return `\n## ${heading}\n\nUse these notes, examples, or code snippets when they are relevant:\n\n\`\`\`text\n${draft.materials.trim()}\n\`\`\`\n`;
 }
 
-function generateSkillMarkdown(skill: SkillDraft) {
-  const name = slugify(skill.title);
+function generateSkillMarkdown(draft: Draft) {
+  const name = slugify(draft.title, "custom-skill");
   const description =
-    skill.summary || `Use when a user needs help with ${skill.title}.`;
-  const materials = skill.materials.trim()
-    ? `\n## Reference Materials\n\nUse these notes, examples, or code snippets when they are relevant:\n\n\`\`\`text\n${skill.materials.trim()}\n\`\`\`\n`
-    : "";
+    draft.summary || `Use when a user needs help with ${draft.title}.`;
 
-  return `---\nname: ${name}\ndescription: ${description}\n---\n\n# ${skill.title || "Custom Skill"}\n\n## Purpose\n\n${skill.purpose || "Define what this skill helps the agent accomplish."}\n\n## Audience\n\n${skill.audience || "Describe who benefits from this skill and the context they work in."}\n\n## When To Use\n\n${sectionList(skill.triggers, "Use when the user request matches this skill's purpose.")}\n\n## Required Inputs\n\n${sectionList(skill.inputs, "Ask for the minimum missing context needed to proceed.")}\n\n## Workflow\n\n${numberedList(skill.workflow)}\n${materials}\n## Output\n\n${skill.output || "Return a complete, user-ready result in the format requested by the user."}\n\n## Guardrails\n\n${sectionList(skill.guardrails, "Be explicit about assumptions, risks, and verification gaps.")}\n`;
+  return `---\nname: ${name}\ndescription: ${description}\n---\n\n# ${draft.title || "Custom Skill"}\n\n## Purpose\n\n${draft.purpose || "Define what this skill helps the agent accomplish."}\n\n## Audience\n\n${draft.audience || "Describe who benefits from this skill and the context they work in."}\n\n## When To Use\n\n${sectionList(draft.triggers, "Use when the user request matches this skill's purpose.")}\n\n## Required Inputs\n\n${sectionList(draft.inputs, "Ask for the minimum missing context needed to proceed.")}\n\n## Workflow\n\n${numberedList(draft.workflow, ["Clarify the user's goal and available inputs.", "Gather the relevant context.", "Execute the workflow carefully.", "Return the requested artifact with caveats."])}\n${referenceSection(draft, "Reference Materials")}\n## Output\n\n${draft.output || "Return a complete, user-ready result in the format requested by the user."}\n\n## Guardrails\n\n${sectionList(draft.guardrails, "Be explicit about assumptions, risks, and verification gaps.")}\n`;
 }
 
-function validationChecks(skill: SkillDraft): ValidationCheck[] {
+function generateDesignMarkdown(draft: Draft) {
+  const name = slugify(draft.title, "custom-design");
+  const description =
+    draft.summary || `Design a clear experience for ${draft.title}.`;
+
+  return `---\nname: ${name}\ndescription: ${description}\ntype: design\n---\n\n# ${draft.title || "Custom Design"}\n\n## Design Goal\n\n${draft.purpose || "Define the product outcome this design should support."}\n\n## Users And Context\n\n${draft.audience || "Describe the primary users, use case, and operating context."}\n\n## When This Design Applies\n\n${sectionList(draft.triggers, "Use this design brief when the requested experience matches this product goal.")}\n\n## Required Inputs\n\n${sectionList(draft.inputs, "Gather the minimum content, data, constraints, and brand context needed to design responsibly.")}\n\n## Design Workflow\n\n${numberedList(draft.workflow, ["Clarify the user goal and product constraints.", "Define information hierarchy and core flows.", "Specify components, states, and responsive behavior.", "Document implementation notes and open questions."])}\n${referenceSection(draft, "Visual System And References")}\n## Deliverable\n\n${draft.output || "Return a complete design brief with layout, components, states, visual direction, and implementation notes."}\n\n## Constraints And Guardrails\n\n${sectionList(draft.guardrails, "Make assumptions explicit and keep visual decisions tied to the user's workflow.")}\n`;
+}
+
+function generateMarkdown(mode: Mode, draft: Draft) {
+  return mode === "skill" ? generateSkillMarkdown(draft) : generateDesignMarkdown(draft);
+}
+
+function validationChecks(mode: Mode, draft: Draft): ValidationCheck[] {
+  const config = modeConfigs[mode];
   return [
     {
-      label: "Frontmatter description",
-      passed: Boolean(skill.summary.trim()),
-      detail: "Add a one-line description so agents know when the skill applies.",
+      label: `${config.fileName} description`,
+      passed: Boolean(draft.summary.trim()),
+      detail:
+        mode === "skill"
+          ? "Add a one-line description so agents know when the skill applies."
+          : "Add a one-line design brief so readers understand the intended experience.",
     },
     {
-      label: "Trigger conditions",
-      passed: listLines(skill.triggers).length >= 2,
-      detail: "List at least two situations where this skill should be used.",
+      label: mode === "skill" ? "Trigger conditions" : "Use context",
+      passed: listLines(draft.triggers).length >= 2,
+      detail:
+        mode === "skill"
+          ? "List at least two situations where this skill should be used."
+          : "List at least two situations where this design brief applies.",
     },
     {
       label: "Required inputs",
-      passed: listLines(skill.inputs).length >= 2,
-      detail: "Name the context an agent should gather before starting.",
+      passed: listLines(draft.inputs).length >= 2,
+      detail:
+        mode === "skill"
+          ? "Name the context an agent should gather before starting."
+          : "Name the content, constraints, and product context needed before design starts.",
     },
     {
-      label: "Workflow depth",
-      passed: listLines(skill.workflow).length >= 4,
-      detail: "Use at least four ordered steps so execution is repeatable.",
+      label: mode === "skill" ? "Workflow depth" : "Design process depth",
+      passed: listLines(draft.workflow).length >= 4,
+      detail:
+        mode === "skill"
+          ? "Use at least four ordered steps so execution is repeatable."
+          : "Use at least four ordered steps covering hierarchy, states, and implementation notes.",
     },
     {
-      label: "Expected output",
-      passed: Boolean(skill.output.trim()),
-      detail: "Tell the agent what final artifact or answer to return.",
+      label: mode === "skill" ? "Expected output" : "Expected deliverable",
+      passed: Boolean(draft.output.trim()),
+      detail:
+        mode === "skill"
+          ? "Tell the agent what final artifact or answer to return."
+          : "Define the final design artifact the reader should produce.",
     },
     {
-      label: "Guardrails",
-      passed: Boolean(skill.guardrails.trim()),
-      detail: "Add constraints that prevent overreach, guessing, or unsafe behavior.",
+      label: mode === "skill" ? "Guardrails" : "Design constraints",
+      passed: Boolean(draft.guardrails.trim()),
+      detail:
+        mode === "skill"
+          ? "Add constraints that prevent overreach, guessing, or unsafe behavior."
+          : "Add constraints that prevent generic, inaccessible, or off-brief design choices.",
     },
     {
-      label: "Reference material",
-      passed: Boolean(skill.materials.trim()),
-      detail: "Optional but recommended: include examples, code, or source notes.",
+      label: mode === "skill" ? "Reference material" : "Visual references",
+      passed: Boolean(draft.materials.trim()),
+      detail:
+        mode === "skill"
+          ? "Optional but recommended: include examples, code, or source notes."
+          : "Optional but recommended: include visual system notes, references, or CSS/component examples.",
     },
   ];
 }
@@ -206,6 +391,14 @@ function extractSection(markdown: string, heading: string) {
     "i",
   );
   return markdown.match(pattern)?.[1]?.trim() ?? "";
+}
+
+function firstSection(markdown: string, headings: string[]) {
+  for (const heading of headings) {
+    const value = extractSection(markdown, heading);
+    if (value) return value;
+  }
+  return "";
 }
 
 function normalizeListSection(value: string) {
@@ -223,35 +416,39 @@ function normalizeWorkflow(value: string) {
     .join("\n");
 }
 
-function parseSkillMarkdown(markdown: string): SkillDraft {
+function parseMarkdown(markdown: string, mode: Mode): Draft {
   const frontmatter = markdown.match(/^---\n([\s\S]*?)\n---/);
-  const title = markdown.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? "Imported Skill";
+  const title = markdown.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? `Imported ${modeConfigs[mode].noun}`;
   const description =
     frontmatter?.[1]
       ?.match(/^description:\s*(.+)$/m)?.[1]
       ?.replace(/^["']|["']$/g, "")
       .trim() ?? "";
-  const materials = extractSection(markdown, "Reference Materials").replace(
-    /^```[a-z]*\n?|```$/g,
-    "",
-  );
+  const materials = firstSection(markdown, [
+    "Reference Materials",
+    "Visual System And References",
+  ]).replace(/^```[a-z]*\n?|```$/g, "");
 
   return {
-    id: `skill-${Date.now()}`,
+    id: `${mode}-${Date.now()}`,
     title,
     summary: description,
-    purpose: extractSection(markdown, "Purpose"),
-    audience: extractSection(markdown, "Audience"),
-    triggers: normalizeListSection(extractSection(markdown, "When To Use")),
-    inputs: normalizeListSection(extractSection(markdown, "Required Inputs")),
-    workflow: normalizeWorkflow(extractSection(markdown, "Workflow")),
+    purpose: firstSection(markdown, ["Purpose", "Design Goal"]),
+    audience: firstSection(markdown, ["Audience", "Users And Context"]),
+    triggers: normalizeListSection(
+      firstSection(markdown, ["When To Use", "When This Design Applies"]),
+    ),
+    inputs: normalizeListSection(firstSection(markdown, ["Required Inputs"])),
+    workflow: normalizeWorkflow(firstSection(markdown, ["Workflow", "Design Workflow"])),
     materials: materials.trim(),
-    output: extractSection(markdown, "Output"),
-    guardrails: normalizeListSection(extractSection(markdown, "Guardrails")),
+    output: firstSection(markdown, ["Output", "Deliverable"]),
+    guardrails: normalizeListSection(
+      firstSection(markdown, ["Guardrails", "Constraints And Guardrails"]),
+    ),
   };
 }
 
-function suggestFromIdea(idea: string, current: SkillDraft): SkillDraft {
+function suggestFromIdea(mode: Mode, idea: string, current: Draft): Draft {
   const clean = idea.trim();
   if (!clean) {
     return current;
@@ -262,111 +459,198 @@ function suggestFromIdea(idea: string, current: SkillDraft): SkillDraft {
     .split(/\s+/)
     .filter((word) => word.length > 3)
     .slice(0, 3);
+  const untouchedTitle =
+    current.title === "New Skill" ||
+    current.title === "New Design" ||
+    !current.title.trim();
   const title =
-    current.title && current.title !== "New Skill"
+    !untouchedTitle
       ? current.title
       : titleWords.length
         ? titleWords.map((word) => word[0].toUpperCase() + word.slice(1)).join(" ")
-        : "Custom Skill";
+        : modeConfigs[mode].noun;
+
+  if (mode === "skill") {
+    return {
+      ...current,
+      title,
+      summary:
+        current.summary ||
+        `Turn requests about ${title.toLowerCase()} into a repeatable expert workflow.`,
+      purpose:
+        current.purpose ||
+        `Help an agent handle ${clean} with consistent context gathering, execution steps, and a polished final artifact.`,
+      audience:
+        current.audience ||
+        "People using Codex or another AI assistant to repeat a specialized workflow.",
+      triggers:
+        current.triggers ||
+        `User asks for help with ${title.toLowerCase()}\nUser provides raw notes and wants a finished artifact\nUser needs a repeatable process rather than one-off advice`,
+      inputs:
+        current.inputs ||
+        "User goal\nRelevant source material\nConstraints or preferences\nDesired output format",
+      workflow:
+        current.workflow ||
+        "Restate the goal and identify missing context\nInspect the provided information or code\nApply the specialized procedure step by step\nValidate the result against the user's constraints\nReturn the final artifact and note any assumptions",
+      output:
+        current.output ||
+        "A complete answer or file-ready artifact, with concise notes about assumptions and validation.",
+      guardrails:
+        current.guardrails ||
+        "Ask for clarification only when missing context blocks progress.\nDo not invent unavailable facts, files, or credentials.\nKeep edits and recommendations scoped to the user's goal.",
+    };
+  }
 
   return {
     ...current,
     title,
     summary:
       current.summary ||
-      `Turn requests about ${title.toLowerCase()} into a repeatable expert workflow.`,
+      `Turn a ${title.toLowerCase()} idea into a clear implementation-ready design brief.`,
     purpose:
       current.purpose ||
-      `Help an agent handle ${clean} with consistent context gathering, execution steps, and a polished final artifact.`,
+      `Define a usable, accessible, and visually coherent experience for ${clean}.`,
     audience:
       current.audience ||
-      "People using Codex or another AI assistant to repeat a specialized workflow.",
+      "Product teams, designers, and engineers who need a shared design direction before implementation.",
     triggers:
       current.triggers ||
-      `User asks for help with ${title.toLowerCase()}\nUser provides raw notes and wants a finished artifact\nUser needs a repeatable process rather than one-off advice`,
+      `User asks for a design brief\nUser describes a product experience or UI\nUser needs layout, interaction, and visual guidance before build`,
     inputs:
       current.inputs ||
-      "User goal\nRelevant source material\nConstraints or preferences\nDesired output format",
+      "Target user and job to be done\nPrimary content or data\nBrand or visual constraints\nRequired screens, sections, or states",
     workflow:
       current.workflow ||
-      "Restate the goal and identify missing context\nInspect the provided information or code\nApply the specialized procedure step by step\nValidate the result against the user's constraints\nReturn the final artifact and note any assumptions",
+      "Clarify the user goal and product constraints\nDefine information hierarchy and primary flows\nSpecify components, states, and responsive behavior\nDescribe visual system and accessibility requirements\nList implementation notes and open questions",
     output:
       current.output ||
-      "A complete answer or file-ready artifact, with concise notes about assumptions and validation.",
+      "A complete DESIGN.md brief with layout, components, states, visual direction, and implementation notes.",
     guardrails:
       current.guardrails ||
-      "Ask for clarification only when missing context blocks progress.\nDo not invent unavailable facts, files, or credentials.\nKeep edits and recommendations scoped to the user's goal.",
+      "Do not invent unavailable product facts or metrics.\nKeep design choices tied to the user workflow.\nCall out assumptions and unresolved content gaps.",
   };
 }
 
 export default function Home() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [skills, setSkills] = useState<SkillDraft[]>(starterSkills);
-  const [selectedId, setSelectedId] = useState("");
+  const [mode, setMode] = useState<Mode>("skill");
+  const [draftsByMode, setDraftsByMode] = useState<Record<Mode, Draft[]>>(starterDrafts);
+  const [selectedIds, setSelectedIds] = useState<Record<Mode, string>>({
+    skill: starterDrafts.skill[0].id,
+    design: starterDrafts.design[0].id,
+  });
   const [idea, setIdea] = useState("");
   const [copied, setCopied] = useState("");
 
+  const config = modeConfigs[mode];
+  const templates = templatesByMode[mode];
+  const drafts = draftsByMode[mode];
+  const selectedId = selectedIds[mode];
+  const selected = drafts.find((draft) => draft.id === selectedId) ?? drafts[0];
+
   useEffect(() => {
-    const saved = window.localStorage.getItem("skillmaker-drafts");
-    if (!saved) {
-      setSelectedId((current) => current || skills[0]?.id || "");
-      return;
-    }
-    try {
-      const parsed = JSON.parse(saved) as SkillDraft[];
-      if (Array.isArray(parsed) && parsed.length) {
-        setSkills(parsed);
-        setSelectedId(parsed[0].id);
+    const hydration = window.setTimeout(() => {
+      const legacy = window.localStorage.getItem("skillmaker-drafts");
+      const nextDrafts: Record<Mode, Draft[]> = { ...starterDrafts };
+      const nextSelected: Record<Mode, string> = {
+        skill: starterDrafts.skill[0].id,
+        design: starterDrafts.design[0].id,
+      };
+      let foundSavedDrafts = false;
+
+      (["skill", "design"] as Mode[]).forEach((draftMode) => {
+        const saved = window.localStorage.getItem(modeConfigs[draftMode].storageKey);
+        if (!saved && draftMode === "skill" && legacy) {
+          try {
+            const parsed = JSON.parse(legacy) as Draft[];
+            if (Array.isArray(parsed) && parsed.length) {
+              nextDrafts.skill = parsed;
+              nextSelected.skill = parsed[0].id;
+              foundSavedDrafts = true;
+            }
+          } catch {
+            window.localStorage.removeItem("skillmaker-drafts");
+          }
+          return;
+        }
+
+        if (!saved) return;
+        try {
+          const parsed = JSON.parse(saved) as Draft[];
+          if (Array.isArray(parsed) && parsed.length) {
+            nextDrafts[draftMode] = parsed;
+            nextSelected[draftMode] = parsed[0].id;
+            foundSavedDrafts = true;
+          }
+        } catch {
+          window.localStorage.removeItem(modeConfigs[draftMode].storageKey);
+        }
+      });
+
+      if (foundSavedDrafts) {
+        setDraftsByMode(nextDrafts);
+        setSelectedIds(nextSelected);
       }
-    } catch {
-      window.localStorage.removeItem("skillmaker-drafts");
-    }
+    }, 0);
+
+    return () => window.clearTimeout(hydration);
   }, []);
 
   useEffect(() => {
-    if (!selectedId && skills[0]) {
-      setSelectedId(skills[0].id);
-    }
-    window.localStorage.setItem("skillmaker-drafts", JSON.stringify(skills));
-  }, [selectedId, skills]);
+    (["skill", "design"] as Mode[]).forEach((draftMode) => {
+      window.localStorage.setItem(
+        modeConfigs[draftMode].storageKey,
+        JSON.stringify(draftsByMode[draftMode]),
+      );
+    });
+  }, [draftsByMode]);
 
-  const selected = skills.find((skill) => skill.id === selectedId) ?? skills[0];
-  const markdown = useMemo(() => generateSkillMarkdown(selected), [selected]);
-  const checks = useMemo(() => validationChecks(selected), [selected]);
+  const markdown = useMemo(() => generateMarkdown(mode, selected), [mode, selected]);
+  const checks = useMemo(() => validationChecks(mode, selected), [mode, selected]);
   const quality = checks.filter((check) => check.passed).length;
-
   const addedTemplateSlugs = useMemo(
-    () => new Set(skills.map((skill) => slugify(skill.title))),
-    [skills],
+    () => new Set(drafts.map((draft) => slugify(draft.title))),
+    [drafts],
   );
 
-  function updateSelected(patch: Partial<SkillDraft>) {
-    setSkills((current) =>
-      current.map((skill) =>
-        skill.id === selected.id ? { ...skill, ...patch } : skill,
+  function setCurrentDrafts(updater: (current: Draft[]) => Draft[]) {
+    setDraftsByMode((current) => ({
+      ...current,
+      [mode]: updater(current[mode]),
+    }));
+  }
+
+  function setCurrentSelected(id: string) {
+    setSelectedIds((current) => ({ ...current, [mode]: id }));
+  }
+
+  function updateSelected(patch: Partial<Draft>) {
+    setCurrentDrafts((current) =>
+      current.map((draft) =>
+        draft.id === selected.id ? { ...draft, ...patch } : draft,
       ),
     );
   }
 
-  function addSkill() {
-    const next = blankSkill();
-    setSkills((current) => [next, ...current]);
-    setSelectedId(next.id);
+  function addDraft() {
+    const next = blankDraft(mode);
+    setCurrentDrafts((current) => [next, ...current]);
+    setCurrentSelected(next.id);
     setIdea("");
   }
 
-  function addTemplate(template: SkillDraft) {
-    setSkills((current) => {
+  function addTemplate(template: Draft) {
+    setCurrentDrafts((current) => {
       const existing = current.find(
-        (skill) => slugify(skill.title) === slugify(template.title),
+        (draft) => slugify(draft.title) === slugify(template.title),
       );
       if (existing) {
-        setSelectedId(existing.id);
+        setCurrentSelected(existing.id);
         return current;
       }
 
-      const next = cloneSkill(template);
-      setSelectedId(next.id);
+      const next = cloneDraft(template);
+      setCurrentSelected(next.id);
       return [next, ...current];
     });
     setIdea("");
@@ -374,8 +658,8 @@ export default function Home() {
 
   function removeDuplicateDrafts() {
     const seen = new Set<string>();
-    const deduped = skills.filter((skill) => {
-      const slug = slugify(skill.title);
+    const deduped = drafts.filter((draft) => {
+      const slug = slugify(draft.title);
       if (seen.has(slug)) {
         return false;
       }
@@ -383,33 +667,34 @@ export default function Home() {
       return true;
     });
 
-    setSkills(deduped.length ? deduped : [blankSkill()]);
-    if (!deduped.some((skill) => skill.id === selectedId)) {
-      setSelectedId(deduped[0]?.id ?? "");
+    const nextDrafts = deduped.length ? deduped : [blankDraft(mode)];
+    setCurrentDrafts(() => nextDrafts);
+    if (!nextDrafts.some((draft) => draft.id === selectedId)) {
+      setCurrentSelected(nextDrafts[0].id);
     }
   }
 
-  function duplicateSkill() {
-    const copy = cloneSkill(selected, `${selected.title} Copy`);
-    setSkills((current) => [copy, ...current]);
-    setSelectedId(copy.id);
+  function duplicateDraft() {
+    const copy = cloneDraft(selected, `${selected.title} Copy`);
+    setCurrentDrafts((current) => [copy, ...current]);
+    setCurrentSelected(copy.id);
   }
 
-  function deleteSkill() {
-    deleteSkillById(selected.id);
+  function deleteDraft() {
+    deleteDraftById(selected.id);
   }
 
-  function deleteSkillById(id: string) {
-    if (skills.length === 1) {
-      const next = blankSkill();
-      setSkills([next]);
-      setSelectedId(next.id);
+  function deleteDraftById(id: string) {
+    if (drafts.length === 1) {
+      const next = blankDraft(mode);
+      setCurrentDrafts(() => [next]);
+      setCurrentSelected(next.id);
       return;
     }
-    const remaining = skills.filter((skill) => skill.id !== id);
-    setSkills(remaining);
+    const remaining = drafts.filter((draft) => draft.id !== id);
+    setCurrentDrafts(() => remaining);
     if (selectedId === id) {
-      setSelectedId(remaining[0].id);
+      setCurrentSelected(remaining[0].id);
     }
   }
 
@@ -430,47 +715,81 @@ export default function Home() {
   }
 
   function downloadMarkdown() {
-    downloadText(markdown, `${slugify(selected.title)}.skill.md`);
+    const extension = mode === "skill" ? "skill" : "design";
+    downloadText(markdown, `${slugify(selected.title)}.${extension}.md`);
   }
 
   function downloadBundle() {
-    const bundle = skills
+    const bundle = drafts
       .map(
-        (skill) =>
-          `<!-- ${slugify(skill.title)}/SKILL.md -->\n\n${generateSkillMarkdown(skill)}`,
+        (draft) =>
+          `<!-- ${slugify(draft.title)}/${config.fileName} -->\n\n${generateMarkdown(mode, draft)}`,
       )
       .join("\n\n---\n\n");
-    downloadText(bundle, "skillmaker-bundle.md");
+    downloadText(bundle, `skillmaker-${mode}-bundle.md`);
   }
 
-  async function importSkill(event: ChangeEvent<HTMLInputElement>) {
+  async function importDraft(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
     const text = await file.text();
-    const imported = parseSkillMarkdown(text);
-    setSkills((current) => [imported, ...current]);
-    setSelectedId(imported.id);
+    const importMode: Mode =
+      /type:\s*design/i.test(text) ||
+      /## Design Goal|## Users And Context|## Design Workflow/i.test(text) ||
+      file.name.toLowerCase().includes("design")
+        ? "design"
+        : "skill";
+    const imported = parseMarkdown(text, importMode);
+    setDraftsByMode((current) => ({
+      ...current,
+      [importMode]: [imported, ...current[importMode]],
+    }));
+    setSelectedIds((current) => ({ ...current, [importMode]: imported.id }));
+    setMode(importMode);
     event.target.value = "";
   }
 
-  const installPrompt = `Use this skill in an agent workspace:\n\n1. Create a folder named ${slugify(selected.title)}.\n2. Save the following content as ${slugify(selected.title)}/SKILL.md.\n3. Restart or reload the agent so it can discover the skill.\n\n${markdown}`;
+  function switchMode(nextMode: Mode) {
+    setMode(nextMode);
+    setIdea("");
+    setCopied("");
+  }
+
+  const installPrompt = `Use this ${config.fileName} in an agent workspace:\n\n1. Create a folder named ${slugify(selected.title)}.\n2. Save the following content as ${slugify(selected.title)}/${config.fileName}.\n3. Restart or reload the agent so it can discover the document.\n\n${markdown}`;
 
   return (
     <main className="app-shell">
-      <aside className="sidebar" aria-label="Skill drafts">
+      <aside className="sidebar" aria-label={`${config.noun} drafts`}>
         <div className="brand-block">
           <div className="brand-mark" aria-hidden="true">
             S
           </div>
           <div>
-            <p className="eyebrow">Open-source skill builder</p>
+            <p className="eyebrow">Open-source document builder</p>
             <h1>SkillMaker</h1>
           </div>
         </div>
 
-        <button className="primary-action" type="button" onClick={addSkill}>
+        <div className="mode-toggle" aria-label="Document type">
+          <button
+            className={mode === "skill" ? "active" : ""}
+            type="button"
+            onClick={() => switchMode("skill")}
+          >
+            SKILL.md
+          </button>
+          <button
+            className={mode === "design" ? "active" : ""}
+            type="button"
+            onClick={() => switchMode("design")}
+          >
+            DESIGN.md
+          </button>
+        </div>
+
+        <button className="primary-action" type="button" onClick={addDraft}>
           <span aria-hidden="true">+</span>
-          New Skill
+          New {config.noun}
         </button>
 
         <input
@@ -478,8 +797,8 @@ export default function Home() {
           className="file-input"
           type="file"
           accept=".md,.markdown,text/markdown,text/plain"
-          onChange={importSkill}
-          aria-label="Import an existing SKILL.md file"
+          onChange={importDraft}
+          aria-label={`Import an existing ${config.fileName} file`}
         />
 
         <div className="template-box">
@@ -509,29 +828,29 @@ export default function Home() {
         </div>
 
         <div className="skill-list">
-          {skills.map((skill) => (
+          {drafts.map((draft) => (
             <div
-              className={`skill-row ${skill.id === selected.id ? "active" : ""}`}
-              key={skill.id}
+              className={`skill-row ${draft.id === selected.id ? "active" : ""}`}
+              key={draft.id}
             >
               <button
                 className="skill-card"
-                onClick={() => setSelectedId(skill.id)}
+                onClick={() => setCurrentSelected(draft.id)}
                 type="button"
               >
                 <span className="skill-icon" aria-hidden="true">
                   #
                 </span>
                 <span>
-                  <strong>{skill.title || "Untitled Skill"}</strong>
-                  <small>{skill.summary || "No summary yet"}</small>
+                  <strong>{draft.title || `Untitled ${config.noun}`}</strong>
+                  <small>{draft.summary || "No summary yet"}</small>
                 </span>
               </button>
               <button
                 className="skill-delete"
                 type="button"
-                onClick={() => deleteSkillById(skill.id)}
-                aria-label={`Delete ${skill.title || "untitled skill"}`}
+                onClick={() => deleteDraftById(draft.id)}
+                aria-label={`Delete ${draft.title || `untitled ${config.noun.toLowerCase()}`}`}
                 title="Delete draft"
               >
                 x
@@ -556,14 +875,14 @@ export default function Home() {
       <section className="workspace">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Design, validate, and export SKILL.md</p>
-            <h2>Turn repeatable AI workflows into clean skill files.</h2>
+            <p className="eyebrow">{config.eyebrow}</p>
+            <h2>{config.headline}</h2>
           </div>
           <div className="topbar-actions">
-            <button type="button" onClick={deleteSkill}>
+            <button type="button" onClick={deleteDraft}>
               Delete
             </button>
-            <button type="button" onClick={duplicateSkill}>
+            <button type="button" onClick={duplicateDraft}>
               Duplicate
             </button>
             <button type="button" onClick={() => copyText(markdown, "markdown")}>
@@ -576,20 +895,20 @@ export default function Home() {
         </header>
 
         <div className="panels">
-          <section className="editor-panel" aria-label="Skill information">
+          <section className="editor-panel" aria-label={`${config.noun} information`}>
             <div className="assist-box">
-              <label htmlFor="idea">Explain the skill you want</label>
+              <label htmlFor="idea">{config.ideaLabel}</label>
               <textarea
                 id="idea"
                 value={idea}
                 onChange={(event) => setIdea(event.target.value)}
-                placeholder="Example: A skill that reviews launch plans, checks risks, and writes an executive-ready readiness memo."
+                placeholder={config.ideaPlaceholder}
               />
               <div className="utility-actions">
                 <button
                   className="primary-action"
                   type="button"
-                  onClick={() => updateSelected(suggestFromIdea(idea, selected))}
+                  onClick={() => updateSelected(suggestFromIdea(mode, idea, selected))}
                 >
                   Assist Draft
                 </button>
@@ -607,42 +926,42 @@ export default function Home() {
 
             <div className="field-grid">
               <label>
-                <span>Skill title</span>
+                <span>{config.titleLabel}</span>
                 <input
                   value={selected.title}
                   onChange={(event) => updateSelected({ title: event.target.value })}
                 />
               </label>
               <label>
-                <span>One-line description</span>
+                <span>{config.summaryLabel}</span>
                 <input
                   value={selected.summary}
                   onChange={(event) => updateSelected({ summary: event.target.value })}
                 />
               </label>
               <label>
-                <span>Purpose</span>
+                <span>{config.purposeLabel}</span>
                 <textarea
                   value={selected.purpose}
                   onChange={(event) => updateSelected({ purpose: event.target.value })}
                 />
               </label>
               <label>
-                <span>Audience or operating context</span>
+                <span>{config.audienceLabel}</span>
                 <textarea
                   value={selected.audience}
                   onChange={(event) => updateSelected({ audience: event.target.value })}
                 />
               </label>
               <label>
-                <span>When to use</span>
+                <span>{config.triggersLabel}</span>
                 <textarea
                   value={selected.triggers}
                   onChange={(event) => updateSelected({ triggers: event.target.value })}
                 />
               </label>
               <label>
-                <span>Required inputs</span>
+                <span>{config.inputsLabel}</span>
                 <textarea
                   value={selected.inputs}
                   onChange={(event) => updateSelected({ inputs: event.target.value })}
@@ -651,14 +970,14 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="process-panel" aria-label="How the skill works">
+          <section className="process-panel" aria-label={`How the ${config.noun.toLowerCase()} works`}>
             <div className="panel-heading">
               <p className="eyebrow">How it works</p>
               <h3>Workflow, materials, and checks</h3>
             </div>
 
             <label>
-              <span>Step-by-step workflow</span>
+              <span>{config.workflowLabel}</span>
               <textarea
                 className="tall-input"
                 value={selected.workflow}
@@ -666,7 +985,7 @@ export default function Home() {
               />
             </label>
             <label>
-              <span>Information, examples, or code</span>
+              <span>{config.materialsLabel}</span>
               <textarea
                 className="code-input"
                 value={selected.materials}
@@ -674,14 +993,14 @@ export default function Home() {
               />
             </label>
             <label>
-              <span>Expected output</span>
+              <span>{config.outputLabel}</span>
               <textarea
                 value={selected.output}
                 onChange={(event) => updateSelected({ output: event.target.value })}
               />
             </label>
             <label>
-              <span>Guardrails</span>
+              <span>{config.guardrailsLabel}</span>
               <textarea
                 value={selected.guardrails}
                 onChange={(event) => updateSelected({ guardrails: event.target.value })}
@@ -696,7 +1015,7 @@ export default function Home() {
               <progress
                 value={quality}
                 max={checks.length}
-                aria-label="Skill readiness"
+                aria-label={`${config.noun} readiness`}
               />
               <ul className="validation-list">
                 {checks.map((check) => (
@@ -715,13 +1034,13 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="preview-panel" aria-label="Generated Skill markdown">
+          <section className="preview-panel" aria-label={`Generated ${config.fileName} markdown`}>
             <div className="panel-heading preview-heading">
               <div>
                 <p className="eyebrow">Generated result</p>
-                <h3>SKILL.md preview</h3>
+                <h3>{config.fileName} preview</h3>
               </div>
-              <span className="file-pill">{slugify(selected.title)}/SKILL.md</span>
+              <span className="file-pill">{slugify(selected.title)}/{config.fileName}</span>
             </div>
             <pre className="markdown-preview">
               <code>{markdown}</code>
