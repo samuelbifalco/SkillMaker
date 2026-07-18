@@ -25,16 +25,20 @@ async function render() {
   );
 }
 
-test("server-renders the Skillsmith workspace shell", async () => {
+test("server-renders the SkillMaker workspace shell", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>Skillsmith<\/title>/i);
-  assert.match(html, /AI-assisted workspace/);
+  assert.match(html, /<title>SkillMaker<\/title>/i);
+  assert.match(html, /open-source workspace/i);
+  assert.match(html, /Design, validate, and export/);
   assert.match(html, /SKILL\.md preview/);
   assert.match(html, /Assist Draft/);
+  assert.match(html, /Copy Install Prompt/);
+  assert.match(html, /Templates/);
+  assert.match(html, /Import/);
   assert.match(html, /Code Review/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/);
 });
@@ -48,11 +52,31 @@ test("uses finished site metadata and removes starter preview files", async () =
 
   assert.match(page, /generateSkillMarkdown/);
   assert.match(page, /downloadMarkdown/);
-  assert.match(layout, /title:\s*"Skillsmith"/);
+  assert.match(page, /parseSkillMarkdown/);
+  assert.match(page, /validationChecks/);
+  assert.match(layout, /title:\s*"SkillMaker"/);
   assert.match(layout, /images:\s*\["\/og\.png"\]/);
   assert.doesNotMatch(layout, /Starter Project|codex-preview|_sites-preview/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
 
   await access(new URL("../public/og.png", import.meta.url));
   await assert.rejects(access(new URL("../app/_sites-preview", templateRoot)));
+});
+
+test("includes open-source project hygiene files", async () => {
+  await Promise.all([
+    access(new URL("../LICENSE", import.meta.url)),
+    access(new URL("../CONTRIBUTING.md", import.meta.url)),
+    access(new URL("../CODE_OF_CONDUCT.md", import.meta.url)),
+    access(new URL("../SECURITY.md", import.meta.url)),
+    access(new URL("../ROADMAP.md", import.meta.url)),
+    access(new URL("../.github/ISSUE_TEMPLATE/bug_report.md", import.meta.url)),
+    access(new URL("../.github/ISSUE_TEMPLATE/feature_request.md", import.meta.url)),
+    access(new URL("../.github/PULL_REQUEST_TEMPLATE.md", import.meta.url)),
+  ]);
+
+  const readme = await readFile(new URL("../README.md", import.meta.url), "utf8");
+  assert.match(readme, /^# SkillMaker/m);
+  assert.match(readme, /open-source workspace/);
+  assert.doesNotMatch(readme, /vinext-starter/);
 });

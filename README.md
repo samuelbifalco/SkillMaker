@@ -1,98 +1,114 @@
-# vinext-starter
+# SkillMaker
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+SkillMaker is an open-source workspace for designing, validating, and exporting reusable AI skills as `SKILL.md` files.
 
-## Prerequisites
+It helps people turn rough instructions, examples, reference notes, and workflow rules into a clean skill document that an AI coding agent can follow.
+
+## Why It Exists
+
+Good agent skills are more than prompts. They need clear trigger conditions, required inputs, ordered workflow steps, reference material, expected outputs, and guardrails. SkillMaker gives those pieces a focused authoring surface instead of asking people to start from a blank markdown file.
+
+## Features
+
+- Create and manage multiple skill drafts.
+- Convert a plain-language idea into a structured draft.
+- Capture purpose, audience, triggers, inputs, workflow, reference material, output, and guardrails.
+- Preview the generated `SKILL.md` in real time.
+- Score draft readiness with practical quality checks.
+- Copy or download a single skill.
+- Export all skills into one markdown bundle.
+- Store drafts locally in the browser.
+- Deploy as a standard Next.js app on Vercel.
+
+## Demo
+
+Add your deployed Vercel URL here:
+
+```text
+https://your-skillmaker-site.vercel.app
+```
+
+## Screenshots
+
+Add screenshots to `public/` or a `docs/` folder and link them here.
+
+## Getting Started
+
+### Prerequisites
 
 - Node.js `>=22.13.0`
+- npm
 
-## Quick Start
+### Install
 
 ```bash
 npm install
+```
+
+### Develop
+
+```bash
 npm run dev
+```
+
+The local app runs at the URL printed by the dev server.
+
+### Build
+
+```bash
 npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+### Test
 
-## Included Shape
-
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```bash
+npm test
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+## Deploy
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+SkillMaker includes `vercel.json` so Vercel uses the expected build settings.
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+```bash
+vercel --prod
+```
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+Important Vercel settings:
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+- Framework preset: `Next.js`
+- Build command: `next build --webpack`
+- Install command: `npm ci --ignore-scripts`
+- Output directory: `.next`
+- Deployment protection: `None` for a public share link
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
+## Project Structure
 
-## Useful Commands
+```text
+app/
+  page.tsx        SkillMaker workspace
+  globals.css    Product styling
+  layout.tsx     Metadata and root layout
+public/
+  og.png         Social preview image
+tests/
+  rendered-html.test.mjs
+vercel.json      Vercel deployment settings
+```
 
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+Some Cloudflare Sites starter files remain for compatibility with the original generated workspace. The Vercel build scopes TypeScript to the app surface.
 
-## Learn More
+## Roadmap
 
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+See [ROADMAP.md](./ROADMAP.md).
+
+## Contributing
+
+Contributions are welcome. Start with [CONTRIBUTING.md](./CONTRIBUTING.md), then look for issues labeled `good first issue` or `help wanted`.
+
+## Security
+
+SkillMaker is currently local-first. Drafts are stored in browser local storage unless a user copies, downloads, or exports them. Please report security issues through [SECURITY.md](./SECURITY.md).
+
+## License
+
+MIT. See [LICENSE](./LICENSE).

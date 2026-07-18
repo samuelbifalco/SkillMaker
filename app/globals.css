@@ -18,8 +18,8 @@
 @theme inline {
   --color-background: var(--paper);
   --color-foreground: var(--ink);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 * {
@@ -199,6 +199,34 @@ h3 {
   padding-right: 2px;
 }
 
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.template-box {
+  display: grid;
+  gap: 10px;
+}
+
+.template-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.template-grid button {
+  min-height: 34px;
+  padding: 0 10px;
+  text-align: left;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
 .skill-card {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
@@ -301,6 +329,23 @@ h3 {
   padding: 14px;
 }
 
+.utility-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.utility-actions button {
+  flex: 1 1 160px;
+}
+
+.privacy-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
 .field-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -343,7 +388,7 @@ h3 {
   padding: 14px;
 }
 
-.quality-card div {
+.quality-card > div:first-child {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -375,6 +420,57 @@ progress::-webkit-progress-bar {
 
 progress::-webkit-progress-value {
   background: linear-gradient(90deg, var(--amber), var(--teal));
+}
+
+.validation-list {
+  display: grid;
+  gap: 8px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.validation-item {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px;
+}
+
+.validation-item > span {
+  display: inline-grid;
+  place-items: center;
+  align-self: start;
+  min-height: 24px;
+  border-radius: 999px;
+  background: var(--rose);
+  color: #6c2424;
+  font-size: 0.66rem;
+  font-weight: 900;
+}
+
+.validation-item.passed > span {
+  background: var(--sage);
+  color: var(--teal-dark);
+}
+
+.validation-item strong,
+.validation-item small {
+  display: block;
+}
+
+.validation-item strong {
+  font-size: 0.84rem;
+}
+
+.validation-item small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
 }
 
 .file-pill {

@@ -2,21 +2,21 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://skillsmith.sites.openai.com"),
-  title: "Skillsmith",
+  metadataBase: new URL("https://skillmaker.vercel.app"),
+  title: "SkillMaker",
   description:
-    "An AI-assisted workspace for shaping instructions into ready-to-use SKILL.md files.",
+    "An open-source workspace for designing, validating, and exporting SKILL.md files.",
   openGraph: {
-    title: "Skillsmith",
+    title: "SkillMaker",
     description:
-      "Shape instructions into ready-to-use SKILL.md files.",
+      "Design, validate, and export ready-to-use SKILL.md files.",
     images: ["/og.png"],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Skillsmith",
+    title: "SkillMaker",
     description:
-      "Shape instructions into ready-to-use SKILL.md files.",
+      "Design, validate, and export ready-to-use SKILL.md files.",
     images: ["/og.png"],
   },
   icons: {

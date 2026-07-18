@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type SkillDraft = {
   id: string;
@@ -16,9 +16,15 @@ type SkillDraft = {
   guardrails: string;
 };
 
-const starterSkills: SkillDraft[] = [
+type ValidationCheck = {
+  label: string;
+  passed: boolean;
+  detail: string;
+};
+
+const templates: SkillDraft[] = [
   {
-    id: "skill-code-review",
+    id: "template-code-review",
     title: "Code Review",
     summary: "Review code changes for correctness, risk, and missing tests.",
     purpose:
@@ -38,7 +44,7 @@ const starterSkills: SkillDraft[] = [
       "Do not mention unrelated style issues unless they hide a defect.\nDo not approve risky changes without evidence from tests or code.",
   },
   {
-    id: "skill-data-validation",
+    id: "template-data-validation",
     title: "Data Validation",
     summary: "Validate a dataset or metric before it is used in a report.",
     purpose:
@@ -57,6 +63,26 @@ const starterSkills: SkillDraft[] = [
     guardrails:
       "Do not claim data is complete without checking freshness and expected grain.\nCall out assumptions explicitly.",
   },
+  {
+    id: "template-docs-generator",
+    title: "Documentation Generator",
+    summary: "Turn source material into clear, maintainable documentation.",
+    purpose:
+      "Help an agent produce docs that explain what changed, how to use it, and what readers need to know next.",
+    audience: "Developers, maintainers, and product teams writing technical docs.",
+    triggers:
+      "User asks for documentation\nUser provides code and wants usage docs\nUser needs README, changelog, or migration notes",
+    inputs:
+      "Source code or API surface\nTarget reader\nRequired documentation format\nKnown caveats or migration details",
+    workflow:
+      "Identify the reader and their goal\nInspect the source material and existing docs\nDraft concise sections in reading order\nInclude runnable examples where useful\nCall out caveats, assumptions, and follow-up tasks",
+    materials:
+      "Prefer short headings, runnable examples, and concrete behavior over marketing language.",
+    output:
+      "Documentation ready to paste into the requested file or publish as a standalone page.",
+    guardrails:
+      "Do not invent APIs, flags, or behavior.\nMark uncertain details as assumptions.\nKeep examples minimal and accurate.",
+  },
 ];
 
 const blankSkill = (): SkillDraft => ({
@@ -72,6 +98,14 @@ const blankSkill = (): SkillDraft => ({
   output: "",
   guardrails: "",
 });
+
+function cloneSkill(skill: SkillDraft, title = skill.title): SkillDraft {
+  return {
+    ...skill,
+    id: `skill-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    title,
+  };
+}
 
 function slugify(value: string) {
   return (
@@ -90,12 +124,16 @@ function listLines(value: string) {
     .filter(Boolean);
 }
 
+function cleanListLine(line: string) {
+  return line.replace(/^[-*0-9. ]+/, "").trim();
+}
+
 function sectionList(value: string, fallback: string) {
   const lines = listLines(value);
   if (!lines.length) {
     return `- ${fallback}`;
   }
-  return lines.map((line) => `- ${line.replace(/^[-*0-9. ]+/, "")}`).join("\n");
+  return lines.map((line) => `- ${cleanListLine(line)}`).join("\n");
 }
 
 function numberedList(value: string) {
@@ -103,9 +141,7 @@ function numberedList(value: string) {
   if (!lines.length) {
     return "1. Clarify the user's goal and available inputs.\n2. Gather the relevant context.\n3. Execute the workflow carefully.\n4. Return the requested artifact with caveats.";
   }
-  return lines
-    .map((line, index) => `${index + 1}. ${line.replace(/^[-*0-9. ]+/, "")}`)
-    .join("\n");
+  return lines.map((line, index) => `${index + 1}. ${cleanListLine(line)}`).join("\n");
 }
 
 function generateSkillMarkdown(skill: SkillDraft) {
@@ -119,16 +155,95 @@ function generateSkillMarkdown(skill: SkillDraft) {
   return `---\nname: ${name}\ndescription: ${description}\n---\n\n# ${skill.title || "Custom Skill"}\n\n## Purpose\n\n${skill.purpose || "Define what this skill helps the agent accomplish."}\n\n## Audience\n\n${skill.audience || "Describe who benefits from this skill and the context they work in."}\n\n## When To Use\n\n${sectionList(skill.triggers, "Use when the user request matches this skill's purpose.")}\n\n## Required Inputs\n\n${sectionList(skill.inputs, "Ask for the minimum missing context needed to proceed.")}\n\n## Workflow\n\n${numberedList(skill.workflow)}\n${materials}\n## Output\n\n${skill.output || "Return a complete, user-ready result in the format requested by the user."}\n\n## Guardrails\n\n${sectionList(skill.guardrails, "Be explicit about assumptions, risks, and verification gaps.")}\n`;
 }
 
-function scoreSkill(skill: SkillDraft) {
-  const checks = [
-    Boolean(skill.summary.trim()),
-    listLines(skill.triggers).length >= 2,
-    listLines(skill.inputs).length >= 2,
-    listLines(skill.workflow).length >= 4,
-    Boolean(skill.output.trim()),
-    Boolean(skill.guardrails.trim()),
+function validationChecks(skill: SkillDraft): ValidationCheck[] {
+  return [
+    {
+      label: "Frontmatter description",
+      passed: Boolean(skill.summary.trim()),
+      detail: "Add a one-line description so agents know when the skill applies.",
+    },
+    {
+      label: "Trigger conditions",
+      passed: listLines(skill.triggers).length >= 2,
+      detail: "List at least two situations where this skill should be used.",
+    },
+    {
+      label: "Required inputs",
+      passed: listLines(skill.inputs).length >= 2,
+      detail: "Name the context an agent should gather before starting.",
+    },
+    {
+      label: "Workflow depth",
+      passed: listLines(skill.workflow).length >= 4,
+      detail: "Use at least four ordered steps so execution is repeatable.",
+    },
+    {
+      label: "Expected output",
+      passed: Boolean(skill.output.trim()),
+      detail: "Tell the agent what final artifact or answer to return.",
+    },
+    {
+      label: "Guardrails",
+      passed: Boolean(skill.guardrails.trim()),
+      detail: "Add constraints that prevent overreach, guessing, or unsafe behavior.",
+    },
+    {
+      label: "Reference material",
+      passed: Boolean(skill.materials.trim()),
+      detail: "Optional but recommended: include examples, code, or source notes.",
+    },
   ];
-  return checks.filter(Boolean).length;
+}
+
+function extractSection(markdown: string, heading: string) {
+  const pattern = new RegExp(
+    `## ${heading}\\s*\\n([\\s\\S]*?)(?=\\n## |\\n# |$)`,
+    "i",
+  );
+  return markdown.match(pattern)?.[1]?.trim() ?? "";
+}
+
+function normalizeListSection(value: string) {
+  return listLines(value)
+    .filter((line) => !line.startsWith("```"))
+    .map(cleanListLine)
+    .filter(Boolean)
+    .join("\n");
+}
+
+function normalizeWorkflow(value: string) {
+  return listLines(value)
+    .map(cleanListLine)
+    .filter(Boolean)
+    .join("\n");
+}
+
+function parseSkillMarkdown(markdown: string): SkillDraft {
+  const frontmatter = markdown.match(/^---\n([\s\S]*?)\n---/);
+  const title = markdown.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? "Imported Skill";
+  const description =
+    frontmatter?.[1]
+      ?.match(/^description:\s*(.+)$/m)?.[1]
+      ?.replace(/^["']|["']$/g, "")
+      .trim() ?? "";
+  const materials = extractSection(markdown, "Reference Materials").replace(
+    /^```[a-z]*\n?|```$/g,
+    "",
+  );
+
+  return {
+    id: `skill-${Date.now()}`,
+    title,
+    summary: description,
+    purpose: extractSection(markdown, "Purpose"),
+    audience: extractSection(markdown, "Audience"),
+    triggers: normalizeListSection(extractSection(markdown, "When To Use")),
+    inputs: normalizeListSection(extractSection(markdown, "Required Inputs")),
+    workflow: normalizeWorkflow(extractSection(markdown, "Workflow")),
+    materials: materials.trim(),
+    output: extractSection(markdown, "Output"),
+    guardrails: normalizeListSection(extractSection(markdown, "Guardrails")),
+  };
 }
 
 function suggestFromIdea(idea: string, current: SkillDraft): SkillDraft {
@@ -180,14 +295,20 @@ function suggestFromIdea(idea: string, current: SkillDraft): SkillDraft {
 }
 
 export default function Home() {
-  const [skills, setSkills] = useState<SkillDraft[]>(starterSkills);
-  const [selectedId, setSelectedId] = useState(starterSkills[0].id);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [skills, setSkills] = useState<SkillDraft[]>(
+    templates.slice(0, 2).map((skill) => cloneSkill(skill)),
+  );
+  const [selectedId, setSelectedId] = useState("");
   const [idea, setIdea] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState("");
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("skillsmith-drafts");
-    if (!saved) return;
+    const saved = window.localStorage.getItem("skillmaker-drafts");
+    if (!saved) {
+      setSelectedId((current) => current || skills[0]?.id || "");
+      return;
+    }
     try {
       const parsed = JSON.parse(saved) as SkillDraft[];
       if (Array.isArray(parsed) && parsed.length) {
@@ -195,17 +316,21 @@ export default function Home() {
         setSelectedId(parsed[0].id);
       }
     } catch {
-      window.localStorage.removeItem("skillsmith-drafts");
+      window.localStorage.removeItem("skillmaker-drafts");
     }
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem("skillsmith-drafts", JSON.stringify(skills));
-  }, [skills]);
+    if (!selectedId && skills[0]) {
+      setSelectedId(skills[0].id);
+    }
+    window.localStorage.setItem("skillmaker-drafts", JSON.stringify(skills));
+  }, [selectedId, skills]);
 
   const selected = skills.find((skill) => skill.id === selectedId) ?? skills[0];
   const markdown = useMemo(() => generateSkillMarkdown(selected), [selected]);
-  const quality = scoreSkill(selected);
+  const checks = useMemo(() => validationChecks(selected), [selected]);
+  const quality = checks.filter((check) => check.passed).length;
 
   function updateSelected(patch: Partial<SkillDraft>) {
     setSkills((current) =>
@@ -222,12 +347,15 @@ export default function Home() {
     setIdea("");
   }
 
+  function addTemplate(template: SkillDraft) {
+    const next = cloneSkill(template);
+    setSkills((current) => [next, ...current]);
+    setSelectedId(next.id);
+    setIdea("");
+  }
+
   function duplicateSkill() {
-    const copy = {
-      ...selected,
-      id: `skill-${Date.now()}`,
-      title: `${selected.title} Copy`,
-    };
+    const copy = cloneSkill(selected, `${selected.title} Copy`);
     setSkills((current) => [copy, ...current]);
     setSelectedId(copy.id);
   }
@@ -244,34 +372,47 @@ export default function Home() {
     setSelectedId(remaining[0].id);
   }
 
-  async function copyMarkdown() {
-    await navigator.clipboard.writeText(markdown);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1400);
+  async function copyText(value: string, label: string) {
+    await navigator.clipboard.writeText(value);
+    setCopied(label);
+    window.setTimeout(() => setCopied(""), 1400);
   }
 
-  function downloadMarkdown() {
-    const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+  function downloadText(contents: string, filename: string) {
+    const blob = new Blob([contents], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${slugify(selected.title)}.skill.md`;
+    link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  function downloadMarkdown() {
+    downloadText(markdown, `${slugify(selected.title)}.skill.md`);
   }
 
   function downloadBundle() {
     const bundle = skills
-      .map((skill) => `<!-- ${slugify(skill.title)}.skill.md -->\n\n${generateSkillMarkdown(skill)}`)
+      .map(
+        (skill) =>
+          `<!-- ${slugify(skill.title)}/SKILL.md -->\n\n${generateSkillMarkdown(skill)}`,
+      )
       .join("\n\n---\n\n");
-    const blob = new Blob([bundle], { type: "text/markdown;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "skillsmith-bundle.md";
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadText(bundle, "skillmaker-bundle.md");
   }
+
+  async function importSkill(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    const imported = parseSkillMarkdown(text);
+    setSkills((current) => [imported, ...current]);
+    setSelectedId(imported.id);
+    event.target.value = "";
+  }
+
+  const installPrompt = `Use this skill in an agent workspace:\n\n1. Create a folder named ${slugify(selected.title)}.\n2. Save the following content as ${slugify(selected.title)}/SKILL.md.\n3. Restart or reload the agent so it can discover the skill.\n\n${markdown}`;
 
   return (
     <main className="app-shell">
@@ -281,8 +422,8 @@ export default function Home() {
             S
           </div>
           <div>
-            <p className="eyebrow">AI-assisted builder</p>
-            <h1>Skillsmith</h1>
+            <p className="eyebrow">Open-source skill builder</p>
+            <h1>SkillMaker</h1>
           </div>
         </div>
 
@@ -290,6 +431,30 @@ export default function Home() {
           <span aria-hidden="true">+</span>
           New Skill
         </button>
+
+        <input
+          ref={fileInputRef}
+          className="file-input"
+          type="file"
+          accept=".md,.markdown,text/markdown,text/plain"
+          onChange={importSkill}
+          aria-label="Import an existing SKILL.md file"
+        />
+
+        <div className="template-box">
+          <p className="eyebrow">Templates</p>
+          <div className="template-grid">
+            {templates.map((template) => (
+              <button
+                key={template.id}
+                type="button"
+                onClick={() => addTemplate(template)}
+              >
+                {template.title}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="skill-list">
           {skills.map((skill) => (
@@ -311,8 +476,8 @@ export default function Home() {
         </div>
 
         <div className="sidebar-footer">
-          <button type="button" onClick={duplicateSkill}>
-            Duplicate
+          <button type="button" onClick={() => fileInputRef.current?.click()}>
+            Import
           </button>
           <button type="button" onClick={downloadBundle}>
             Export All
@@ -323,15 +488,18 @@ export default function Home() {
       <section className="workspace">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Create one or more Skill.md files</p>
-            <h2>Explain the skill, capture its context, and export the final file.</h2>
+            <p className="eyebrow">Design, validate, and export SKILL.md</p>
+            <h2>Turn repeatable AI workflows into clean skill files.</h2>
           </div>
           <div className="topbar-actions">
             <button type="button" onClick={deleteSkill}>
               Delete
             </button>
-            <button type="button" onClick={copyMarkdown}>
-              {copied ? "Copied" : "Copy"}
+            <button type="button" onClick={duplicateSkill}>
+              Duplicate
+            </button>
+            <button type="button" onClick={() => copyText(markdown, "markdown")}>
+              {copied === "markdown" ? "Copied" : "Copy"}
             </button>
             <button className="accent-action" type="button" onClick={downloadMarkdown}>
               Download
@@ -349,13 +517,24 @@ export default function Home() {
                 onChange={(event) => setIdea(event.target.value)}
                 placeholder="Example: A skill that reviews launch plans, checks risks, and writes an executive-ready readiness memo."
               />
-              <button
-                className="primary-action"
-                type="button"
-                onClick={() => updateSelected(suggestFromIdea(idea, selected))}
-              >
-                Assist Draft
-              </button>
+              <div className="utility-actions">
+                <button
+                  className="primary-action"
+                  type="button"
+                  onClick={() => updateSelected(suggestFromIdea(idea, selected))}
+                >
+                  Assist Draft
+                </button>
+                <button
+                  type="button"
+                  onClick={() => copyText(installPrompt, "prompt")}
+                >
+                  {copied === "prompt" ? "Copied" : "Copy Install Prompt"}
+                </button>
+              </div>
+              <p className="privacy-note">
+                Drafts stay in this browser unless you copy, download, import, or export them.
+              </p>
             </div>
 
             <div className="field-grid">
@@ -443,10 +622,28 @@ export default function Home() {
 
             <div className="quality-card">
               <div>
-                <strong>{quality}/6</strong>
+                <strong>{quality}/{checks.length}</strong>
                 <span>Readiness checks complete</span>
               </div>
-              <progress value={quality} max="6" aria-label="Skill readiness" />
+              <progress
+                value={quality}
+                max={checks.length}
+                aria-label="Skill readiness"
+              />
+              <ul className="validation-list">
+                {checks.map((check) => (
+                  <li
+                    className={`validation-item ${check.passed ? "passed" : ""}`}
+                    key={check.label}
+                  >
+                    <span aria-hidden="true">{check.passed ? "OK" : "TODO"}</span>
+                    <div>
+                      <strong>{check.label}</strong>
+                      <small>{check.detail}</small>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           </section>
 
@@ -456,7 +653,7 @@ export default function Home() {
                 <p className="eyebrow">Generated result</p>
                 <h3>SKILL.md preview</h3>
               </div>
-              <span className="file-pill">{slugify(selected.title)}.skill.md</span>
+              <span className="file-pill">{slugify(selected.title)}/SKILL.md</span>
             </div>
             <pre className="markdown-preview">
               <code>{markdown}</code>
