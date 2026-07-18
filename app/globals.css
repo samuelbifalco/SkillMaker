@@ -220,11 +220,41 @@ h3 {
 }
 
 .template-grid button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   min-height: 34px;
   padding: 0 10px;
   text-align: left;
   font-size: 0.84rem;
   font-weight: 700;
+}
+
+.template-grid button small {
+  border-radius: 999px;
+  background: var(--sage);
+  color: var(--teal-dark);
+  padding: 3px 7px;
+  font-size: 0.66rem;
+  font-weight: 900;
+}
+
+.template-grid button.template-added {
+  border-color: rgba(0, 124, 120, 0.26);
+  background: #f7fbf9;
+}
+
+.skill-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.skill-row.active .skill-card {
+  border-color: rgba(0, 124, 120, 0.3);
+  background: var(--sage);
 }
 
 .skill-card {
@@ -234,11 +264,6 @@ h3 {
   min-height: 76px;
   padding: 12px;
   text-align: left;
-}
-
-.skill-card.active {
-  border-color: rgba(0, 124, 120, 0.3);
-  background: var(--sage);
 }
 
 .skill-card strong,
@@ -268,6 +293,21 @@ h3 {
   color: white;
   font-family: var(--font-geist-mono), monospace;
   font-weight: 800;
+}
+
+.skill-delete {
+  align-self: stretch;
+  min-height: 0;
+  padding: 0;
+  border-color: var(--line);
+  color: #7b3434;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.skill-delete:hover {
+  border-color: #d19b9b;
+  background: #fff1f1;
 }
 
 .sidebar-footer {

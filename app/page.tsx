@@ -85,6 +85,11 @@ const templates: SkillDraft[] = [
   },
 ];
 
+const starterSkills: SkillDraft[] = templates.slice(0, 2).map((skill) => ({
+  ...skill,
+  id: skill.id.replace("template", "skill"),
+}));
+
 const blankSkill = (): SkillDraft => ({
   id: `skill-${Date.now()}`,
   title: "New Skill",
@@ -296,9 +301,7 @@ function suggestFromIdea(idea: string, current: SkillDraft): SkillDraft {
 
 export default function Home() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [skills, setSkills] = useState<SkillDraft[]>(
-    templates.slice(0, 2).map((skill) => cloneSkill(skill)),
-  );
+  const [skills, setSkills] = useState<SkillDraft[]>(starterSkills);
   const [selectedId, setSelectedId] = useState("");
   const [idea, setIdea] = useState("");
   const [copied, setCopied] = useState("");
@@ -332,6 +335,11 @@ export default function Home() {
   const checks = useMemo(() => validationChecks(selected), [selected]);
   const quality = checks.filter((check) => check.passed).length;
 
+  const addedTemplateSlugs = useMemo(
+    () => new Set(skills.map((skill) => slugify(skill.title))),
+    [skills],
+  );
+
   function updateSelected(patch: Partial<SkillDraft>) {
     setSkills((current) =>
       current.map((skill) =>
@@ -348,6 +356,15 @@ export default function Home() {
   }
 
   function addTemplate(template: SkillDraft) {
+    const existing = skills.find(
+      (skill) => slugify(skill.title) === slugify(template.title),
+    );
+    if (existing) {
+      setSelectedId(existing.id);
+      setIdea("");
+      return;
+    }
+
     const next = cloneSkill(template);
     setSkills((current) => [next, ...current]);
     setSelectedId(next.id);
@@ -361,15 +378,21 @@ export default function Home() {
   }
 
   function deleteSkill() {
+    deleteSkillById(selected.id);
+  }
+
+  function deleteSkillById(id: string) {
     if (skills.length === 1) {
       const next = blankSkill();
       setSkills([next]);
       setSelectedId(next.id);
       return;
     }
-    const remaining = skills.filter((skill) => skill.id !== selected.id);
+    const remaining = skills.filter((skill) => skill.id !== id);
     setSkills(remaining);
-    setSelectedId(remaining[0].id);
+    if (selectedId === id) {
+      setSelectedId(remaining[0].id);
+    }
   }
 
   async function copyText(value: string, label: string) {
@@ -444,34 +467,57 @@ export default function Home() {
         <div className="template-box">
           <p className="eyebrow">Templates</p>
           <div className="template-grid">
-            {templates.map((template) => (
-              <button
-                key={template.id}
-                type="button"
-                onClick={() => addTemplate(template)}
-              >
-                {template.title}
-              </button>
-            ))}
+            {templates.map((template) => {
+              const isAdded = addedTemplateSlugs.has(slugify(template.title));
+              return (
+                <button
+                  className={isAdded ? "template-added" : ""}
+                  key={template.id}
+                  type="button"
+                  onClick={() => addTemplate(template)}
+                  aria-label={
+                    isAdded
+                      ? `Select existing ${template.title} draft`
+                      : `Add ${template.title} template`
+                  }
+                >
+                  <span>{template.title}</span>
+                  {isAdded ? <small>Added</small> : null}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         <div className="skill-list">
           {skills.map((skill) => (
-            <button
-              className={`skill-card ${skill.id === selected.id ? "active" : ""}`}
+            <div
+              className={`skill-row ${skill.id === selected.id ? "active" : ""}`}
               key={skill.id}
-              onClick={() => setSelectedId(skill.id)}
-              type="button"
             >
-              <span className="skill-icon" aria-hidden="true">
-                #
-              </span>
-              <span>
-                <strong>{skill.title || "Untitled Skill"}</strong>
-                <small>{skill.summary || "No summary yet"}</small>
-              </span>
-            </button>
+              <button
+                className="skill-card"
+                onClick={() => setSelectedId(skill.id)}
+                type="button"
+              >
+                <span className="skill-icon" aria-hidden="true">
+                  #
+                </span>
+                <span>
+                  <strong>{skill.title || "Untitled Skill"}</strong>
+                  <small>{skill.summary || "No summary yet"}</small>
+                </span>
+              </button>
+              <button
+                className="skill-delete"
+                type="button"
+                onClick={() => deleteSkillById(skill.id)}
+                aria-label={`Delete ${skill.title || "untitled skill"}`}
+                title="Delete draft"
+              >
+                x
+              </button>
+            </div>
           ))}
         </div>
 
