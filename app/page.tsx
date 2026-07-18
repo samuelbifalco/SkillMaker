@@ -356,19 +356,37 @@ export default function Home() {
   }
 
   function addTemplate(template: SkillDraft) {
-    const existing = skills.find(
-      (skill) => slugify(skill.title) === slugify(template.title),
-    );
-    if (existing) {
-      setSelectedId(existing.id);
-      setIdea("");
-      return;
-    }
+    setSkills((current) => {
+      const existing = current.find(
+        (skill) => slugify(skill.title) === slugify(template.title),
+      );
+      if (existing) {
+        setSelectedId(existing.id);
+        return current;
+      }
 
-    const next = cloneSkill(template);
-    setSkills((current) => [next, ...current]);
-    setSelectedId(next.id);
+      const next = cloneSkill(template);
+      setSelectedId(next.id);
+      return [next, ...current];
+    });
     setIdea("");
+  }
+
+  function removeDuplicateDrafts() {
+    const seen = new Set<string>();
+    const deduped = skills.filter((skill) => {
+      const slug = slugify(skill.title);
+      if (seen.has(slug)) {
+        return false;
+      }
+      seen.add(slug);
+      return true;
+    });
+
+    setSkills(deduped.length ? deduped : [blankSkill()]);
+    if (!deduped.some((skill) => skill.id === selectedId)) {
+      setSelectedId(deduped[0]?.id ?? "");
+    }
   }
 
   function duplicateSkill() {
@@ -475,9 +493,10 @@ export default function Home() {
                   key={template.id}
                   type="button"
                   onClick={() => addTemplate(template)}
+                  disabled={isAdded}
                   aria-label={
                     isAdded
-                      ? `Select existing ${template.title} draft`
+                      ? `${template.title} template already added`
                       : `Add ${template.title} template`
                   }
                 >
@@ -524,6 +543,9 @@ export default function Home() {
         <div className="sidebar-footer">
           <button type="button" onClick={() => fileInputRef.current?.click()}>
             Import
+          </button>
+          <button type="button" onClick={removeDuplicateDrafts}>
+            Dedupe
           </button>
           <button type="button" onClick={downloadBundle}>
             Export All

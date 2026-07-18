@@ -40,7 +40,9 @@ test("server-renders the SkillMaker workspace shell", async () => {
   assert.match(html, /Templates/);
   assert.match(html, /Added/);
   assert.match(html, /Import/);
+  assert.match(html, /Dedupe/);
   assert.match(html, /Delete draft/);
+  assert.match(html, /disabled=""/);
   assert.match(html, /Code Review/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/);
 });
@@ -58,6 +60,7 @@ test("uses finished site metadata and removes starter preview files", async () =
   assert.match(page, /validationChecks/);
   assert.match(page, /addedTemplateSlugs/);
   assert.match(page, /deleteSkillById/);
+  assert.match(page, /removeDuplicateDrafts/);
   assert.match(layout, /title:\s*"SkillMaker"/);
   assert.match(layout, /images:\s*\["\/og\.png"\]/);
   assert.doesNotMatch(layout, /Starter Project|codex-preview|_sites-preview/);
